@@ -1,18 +1,49 @@
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { Loader } from "../../components/Loader";
 
 interface CheckoutData {
   dogName: string;
-  services: Array<{ id: string; title: string; price: string }>;
-  totalPrice: string;
+  services: Array<{ id: string; title: string; price: number }>;
+  totalPrice: number;
   createdAt: string;
 }
 
 export function CheckoutPage() {
-  // For main branch: hooks won't work, so just show UI structure
-  // This will be implemented properly in RTK Query branches
-  const data: CheckoutData | null = null;
-  const isLoading = false;
-  const error = null;
+  const { checkoutId } = useParams<{ checkoutId: string }>();
+  const [data, setData] = useState<CheckoutData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCheckout = async () => {
+      if (!checkoutId) {
+        setError("No checkout ID provided");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/checkout/${checkoutId}`);
+
+        if (!response.ok) {
+          throw new Error("Checkout not found");
+        }
+
+        const checkoutData = await response.json();
+        setData(checkoutData);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
+        setData(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCheckout();
+  }, [checkoutId]);
 
   if (isLoading) {
     return (
@@ -28,10 +59,6 @@ export function CheckoutPage() {
       <div className="page">
         <h1>Checkout</h1>
         <p>Checkout not found or an error occurred.</p>
-        <p className="note">
-          Note: Checkout functionality is not implemented in the main branch.
-          Please check the RTK Query branches for working implementation.
-        </p>
       </div>
     );
   }
@@ -46,13 +73,13 @@ export function CheckoutPage() {
         <div className="checkoutDog">
           <h3>Dog</h3>
           <p>
-            <strong>{(data as CheckoutData).dogName}</strong>
+            <strong>{data.dogName}</strong>
           </p>
         </div>
 
         <div className="checkoutServices">
           <h3>Services</h3>
-          {(data as CheckoutData).services.map((service: any) => (
+          {data.services.map((service) => (
             <div key={service.id} className="checkoutServiceItem">
               <span>{service.title}</span>
               <span>${Number(service.price).toFixed(2)}</span>
@@ -62,11 +89,11 @@ export function CheckoutPage() {
 
         <div className="checkoutTotal">
           <h3>Total</h3>
-          <p className="totalPrice">${Number((data as CheckoutData).totalPrice).toFixed(2)}</p>
+          <p className="totalPrice">${Number(data.totalPrice).toFixed(2)}</p>
         </div>
 
         <p className="checkoutDate">
-          Order placed: {new Date((data as CheckoutData).createdAt).toLocaleString()}
+          Order placed: {new Date(data.createdAt).toLocaleString()}
         </p>
       </div>
     </div>

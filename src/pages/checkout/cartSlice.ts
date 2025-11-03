@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 
 export interface CartItem {
   serviceId: string;
@@ -8,11 +8,34 @@ export interface CartItem {
 
 interface CartState {
   items: CartItem[];
+  checkoutLoading: boolean;
+  checkoutError: string | null;
 }
 
 const initialState: CartState = {
   items: [],
+  checkoutLoading: false,
+  checkoutError: null,
 };
+
+export const submitCheckout = createAsyncThunk(
+  "cart/submitCheckout",
+  async ({ dogId, serviceIds }: { dogId: string; serviceIds: string[] }) => {
+    const response = await fetch("/api/checkout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ dogId, serviceIds }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Checkout failed");
+    }
+
+    return response.json();
+  }
+);
 
 export const cartSlice = createSlice({
   name: "cart",
@@ -25,6 +48,9 @@ export const cartSlice = createSlice({
       );
       if (!existingItem) {
         state.items.push(action.payload);
+        console.log('Added to cart:', action.payload, 'Total items:', state.items.length);
+      } else {
+        console.log('Item already in cart:', action.payload.serviceId);
       }
     },
     removeFromCart: (state, action: PayloadAction<string>) => {
@@ -35,6 +61,21 @@ export const cartSlice = createSlice({
     clearCart: (state) => {
       state.items = [];
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(submitCheckout.pending, (state) => {
+        state.checkoutLoading = true;
+        state.checkoutError = null;
+      })
+      .addCase(submitCheckout.fulfilled, (state) => {
+        state.checkoutLoading = false;
+        state.items = [];
+      })
+      .addCase(submitCheckout.rejected, (state, action) => {
+        state.checkoutLoading = false;
+        state.checkoutError = action.error.message || "Checkout failed";
+      });
   },
 });
 

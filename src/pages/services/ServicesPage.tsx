@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from "../../store";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { LuckyDog } from "../dogs/LuckyDog";
 import { Loader } from "../../components/Loader";
 import {
@@ -17,11 +17,12 @@ import {
   selectLuckyDog,
   selectLuckyDogEntity
 } from "../dogs/dogsSlice";
-import { addToCart } from "../checkout/cartSlice";
+import { addToCart, submitCheckout } from "../checkout/cartSlice";
 import type { RootState } from "../../store";
 
 export function ServicesPage() {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
 
   const services = useSelector(selectAllServices);
   const myDogs = useSelector(selectAllDogs);
@@ -29,6 +30,7 @@ export function ServicesPage() {
   const luckyDogEntity = useSelector(selectLuckyDogEntity);
   const myServices = useSelector(selectServicesForLuckyDog);
   const cartItems = useSelector((state: RootState) => state.cart.items);
+  const checkoutLoading = useSelector((state: RootState) => state.cart.checkoutLoading);
 
   const isLoadingServices = useSelector(selectServicesLoading);
   const isLoadingDogs = useSelector(selectDogsLoading);
@@ -49,10 +51,19 @@ export function ServicesPage() {
     );
   };
 
-  const handleCheckout = () => {
-    // Note: Full checkout not implemented in redux-toolkit-no-rtkq
-    // This branch demonstrates Redux Toolkit without RTK Query
-    console.log("Checkout clicked - full implementation in RTK Query branches");
+  const handleCheckout = async () => {
+    if (!luckyDog) return;
+
+    const serviceIds = cartItems.map((item) => item.serviceId);
+    console.log('Checkout - Cart items:', cartItems);
+    console.log('Checkout - Service IDs:', serviceIds);
+    const result = await dispatch(submitCheckout({ dogId: luckyDog, serviceIds }));
+
+    if (submitCheckout.fulfilled.match(result)) {
+      console.log('Checkout result:', result.payload);
+      const checkoutId = result.payload.id;
+      navigate(`/checkout/${checkoutId}`);
+    }
   };
 
   const isServiceInCart = (serviceId: string) => {
@@ -68,8 +79,12 @@ export function ServicesPage() {
             Cart: {cartItems.length} item{cartItems.length !== 1 ? 's' : ''}
           </p>
           {luckyDog && (
-            <button className="btn checkoutBtn" onClick={handleCheckout}>
-              Checkout
+            <button
+              className="btn checkoutBtn"
+              onClick={handleCheckout}
+              disabled={checkoutLoading}
+            >
+              {checkoutLoading ? "Processing..." : "Checkout"}
             </button>
           )}
         </div>

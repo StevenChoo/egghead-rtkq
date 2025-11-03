@@ -43,14 +43,13 @@ test.describe('Checkout Flow', () => {
 
     // Step 5: Add 2 services to the cart
     // Click first "Add to Cart" button
-    const addToCartButtons = page.locator('button:has-text("Add to Cart")');
-    await addToCartButtons.first().click();
+    await page.locator('button:has-text("Add to Cart")').first().click();
 
-    // Wait a moment for state to update
-    await page.waitForTimeout(200);
+    // Wait for cart to show 1 item
+    await expect(page.locator('.cartSummary')).toContainText('Cart: 1 item');
 
-    // Click second "Add to Cart" button
-    await addToCartButtons.nth(0).click();
+    // Click second "Add to Cart" button (now this will be a different button)
+    await page.locator('button:has-text("Add to Cart")').first().click();
 
     // Verify cart shows 2 items
     await expect(page.locator('.cartSummary')).toContainText('Cart: 2 items');
