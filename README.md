@@ -2,6 +2,8 @@
 
 A comprehensive TypeScript React application demonstrating three different approaches to state management and data fetching, built for educational purposes and presentations.
 
+Showcase is originally based on: https://github.com/xjamundx/egghead-rtkq
+
 ## 🎯 Purpose
 
 This repository showcases different Redux patterns through three specialized branches, each demonstrating a specific approach to state management:
