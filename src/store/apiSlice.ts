@@ -20,44 +20,69 @@ export interface CheckoutResult {
 }
 
 export const api = createApi({
+  reducerPath: "api",
   baseQuery: fetchBaseQuery({ baseUrl: "/api" }),
-  tagTypes: ['Checkout'],
-  endpoints: (builder) => {
-    return {
-      getDogs: builder.query<Record<string, Dog>, void>({
-        query: () => "/dogs"
+  tagTypes: ["Dogs", "Services", "Checkout"],
+  endpoints: (builder) => ({
+    // Dogs endpoints
+    getDogs: builder.query<Record<string, Dog>, void>({
+      query: () => "/dogs",
+      providesTags: ["Dogs"],
+    }),
+    addDog: builder.mutation<{ success: boolean }, Omit<Dog, "id">>({
+      query: (body) => ({
+        url: "/dogs",
+        method: "POST",
+        body,
       }),
-      getServices: builder.query<Service[], void>({
-        query: () => "/services"
+      invalidatesTags: ["Dogs"],
+    }),
+    removeDog: builder.mutation<{ id: string }, string>({
+      query: (id) => ({
+        url: `/dogs/${id}`,
+        method: "DELETE",
       }),
-      getService: builder.query<Service, string>({
-        query: (id) => `/services/${id}`
+      invalidatesTags: ["Dogs"],
+    }),
+
+    // Services endpoints
+    getServices: builder.query<Service[], void>({
+      query: () => "/services",
+      providesTags: ["Services"],
+    }),
+    getService: builder.query<Service, string>({
+      query: (id) => `/services/${id}`,
+    }),
+
+    // Contact endpoint
+    makeContact: builder.mutation<ContactForm, ContactForm>({
+      query: (body) => ({
+        url: "/contact",
+        method: "POST",
+        body,
       }),
-      makeContact: builder.mutation<ContactForm, ContactForm>({
-        query: (body) => ({
-          url: "/contact",
-          method: "POST",
-          body,
-        }),
+    }),
+
+    // Checkout endpoints
+    createCheckout: builder.mutation<CheckoutResult, CheckoutData>({
+      query: (body) => ({
+        url: "/checkout",
+        method: "POST",
+        body,
       }),
-      createCheckout: builder.mutation<CheckoutResult, CheckoutData>({
-        query: (body) => ({
-          url: "/checkout",
-          method: "POST",
-          body,
-        }),
-        invalidatesTags: ['Checkout'],
-      }),
-      getCheckout: builder.query<CheckoutResult, string>({
-        query: (id) => `/checkout/${id}`,
-        providesTags: ['Checkout'],
-      }),
-    };
-  },
+      invalidatesTags: ["Checkout"],
+    }),
+    getCheckout: builder.query<CheckoutResult, string>({
+      query: (id) => `/checkout/${id}`,
+      providesTags: ["Checkout"],
+    }),
+  }),
 });
 
 export const {
   useGetDogsQuery,
+  useAddDogMutation,
+  useRemoveDogMutation,
   useGetServicesQuery,
   useGetServiceQuery,
   useMakeContactMutation,

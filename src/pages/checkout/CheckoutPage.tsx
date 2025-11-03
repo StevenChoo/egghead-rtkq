@@ -1,49 +1,13 @@
-import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Loader } from "../../components/Loader";
-
-interface CheckoutData {
-  dogName: string;
-  services: Array<{ id: string; title: string; price: number }>;
-  totalPrice: number;
-  createdAt: string;
-}
+import { useGetCheckoutQuery } from "../../store/apiSlice";
 
 export function CheckoutPage() {
   const { checkoutId } = useParams<{ checkoutId: string }>();
-  const [data, setData] = useState<CheckoutData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchCheckout = async () => {
-      if (!checkoutId) {
-        setError("No checkout ID provided");
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/checkout/${checkoutId}`);
-
-        if (!response.ok) {
-          throw new Error("Checkout not found");
-        }
-
-        const checkoutData = await response.json();
-        setData(checkoutData);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-        setData(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCheckout();
-  }, [checkoutId]);
+  const { data, isLoading, error } = useGetCheckoutQuery(checkoutId || '', {
+    skip: !checkoutId,
+  });
 
   if (isLoading) {
     return (
