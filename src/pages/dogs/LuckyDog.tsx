@@ -1,22 +1,14 @@
 import { useDispatch, useSelector } from "react-redux";
-import { useMemo } from "react";
 import { useGetDogsQuery } from "../../store/apiSlice";
 import { setLuckyDog, selectLuckyDogId } from "./uiSlice";
-import { getSize, getAge } from "../../utils/dogUtils";
 
 export function LuckyDog() {
   const dispatch = useDispatch();
   const { data: dogsData = {}, isLoading } = useGetDogsQuery();
   const luckyDogId = useSelector(selectLuckyDogId);
 
-  // Transform dogs data with calculated fields
-  const myDogs = useMemo(() => {
-    return Object.values(dogsData).map((dog) => ({
-      ...dog,
-      size: getSize(dog.weight),
-      age: getAge(dog.dob),
-    }));
-  }, [dogsData]);
+  // Data already transformed by transformResponse in API slice
+  const myDogs = Object.values(dogsData);
 
   const onLuckyDogChosen = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value || null;

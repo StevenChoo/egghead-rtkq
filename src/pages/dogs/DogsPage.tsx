@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { useRef } from "react";
 import { useSelector } from "react-redux";
 import type { Dog } from "../../types";
 import { LuckyDog } from "./LuckyDog";
@@ -9,7 +9,6 @@ import {
   useRemoveDogMutation,
 } from "../../store/apiSlice";
 import { selectLuckyDogId } from "./uiSlice";
-import { getSize, getAge } from "../../utils/dogUtils";
 
 export function DogsPage() {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -19,14 +18,8 @@ export function DogsPage() {
   const [removeDog] = useRemoveDogMutation();
   const luckyDogId = useSelector(selectLuckyDogId);
 
-  // Transform dogs data with calculated fields
-  const myDogs = useMemo(() => {
-    return Object.values(dogsData).map((dog) => ({
-      ...dog,
-      size: getSize(dog.weight),
-      age: getAge(dog.dob),
-    }));
-  }, [dogsData]);
+  // Data already transformed by transformResponse in API slice
+  const myDogs = Object.values(dogsData);
 
   const handleDeleteDog = (e: React.MouseEvent, dog: Dog) => {
     e.preventDefault();

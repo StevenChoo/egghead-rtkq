@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getSize, getAge } from '../pages/dogs/dogsSlice';
+import { getSize, getAge } from '../utils/dogUtils';
 
 export interface DogInput {
   weight: number | string;

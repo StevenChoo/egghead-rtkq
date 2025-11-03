@@ -11,7 +11,6 @@ import {
 } from "../../store/apiSlice";
 import { addToCart, clearCart } from "../checkout/cartSlice";
 import { selectLuckyDogId } from "../dogs/uiSlice";
-import { getSize, getAge } from "../../utils/dogUtils";
 
 export function ServicesPage() {
   const dispatch = useDispatch();
@@ -23,14 +22,8 @@ export function ServicesPage() {
   const { data: dogsData = {}, isLoading: isLoadingDogs } = useGetDogsQuery();
   const [createCheckout, { isLoading: isCheckingOut }] = useCreateCheckoutMutation();
 
-  // Transform dogs with calculated fields
-  const myDogs = useMemo(() => {
-    return Object.values(dogsData).map((dog) => ({
-      ...dog,
-      size: getSize(dog.weight),
-      age: getAge(dog.dob),
-    }));
-  }, [dogsData]);
+  // Data already transformed by transformResponse in API slice
+  const myDogs = Object.values(dogsData);
 
   const luckyDog = luckyDogId ? myDogs.find(d => d.id === luckyDogId) : null;
 
