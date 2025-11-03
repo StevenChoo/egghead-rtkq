@@ -1,45 +1,64 @@
-import { useEffect } from "react";
+import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import type { AppDispatch } from "../../store";
+import type { RootState } from "../../store";
 import { Link, useNavigate } from "react-router-dom";
 import { LuckyDog } from "../dogs/LuckyDog";
 import { Loader } from "../../components/Loader";
 import {
-  fetchServices,
-  selectAllServices,
-  selectServicesLoading,
-  selectServicesForLuckyDog
-} from "./servicesSlice";
-import {
-  fetchDogs,
-  selectAllDogs,
-  selectDogsLoading,
-  selectLuckyDog,
-  selectLuckyDogEntity
-} from "../dogs/dogsSlice";
-import { addToCart, submitCheckout } from "../checkout/cartSlice";
-import type { RootState } from "../../store";
+  useGetServicesQuery,
+  useGetDogsQuery,
+  useCreateCheckoutMutation,
+} from "../../store/apiSlice";
+import { addToCart, clearCart } from "../checkout/cartSlice";
+import { selectLuckyDogId } from "../dogs/uiSlice";
+import { getSize, getAge } from "../../utils/dogUtils";
 
 export function ServicesPage() {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-
-  const services = useSelector(selectAllServices);
-  const myDogs = useSelector(selectAllDogs);
-  const luckyDog = useSelector(selectLuckyDog);
-  const luckyDogEntity = useSelector(selectLuckyDogEntity);
-  const myServices = useSelector(selectServicesForLuckyDog);
+  const luckyDogId = useSelector(selectLuckyDogId);
   const cartItems = useSelector((state: RootState) => state.cart.items);
-  const checkoutLoading = useSelector((state: RootState) => state.cart.checkoutLoading);
 
-  const isLoadingServices = useSelector(selectServicesLoading);
-  const isLoadingDogs = useSelector(selectDogsLoading);
+  const { data: servicesData = [], isLoading: isLoadingServices } = useGetServicesQuery();
+  const { data: dogsData = {}, isLoading: isLoadingDogs } = useGetDogsQuery();
+  const [createCheckout, { isLoading: isCheckingOut }] = useCreateCheckoutMutation();
 
-  // Fetch data on mount
-  useEffect(() => {
-    dispatch(fetchServices());
-    dispatch(fetchDogs());
-  }, [dispatch]);
+  // Transform dogs with calculated fields
+  const myDogs = useMemo(() => {
+    return Object.values(dogsData).map((dog) => ({
+      ...dog,
+      size: getSize(dog.weight),
+      age: getAge(dog.dob),
+    }));
+  }, [dogsData]);
+
+  const luckyDog = luckyDogId ? myDogs.find(d => d.id === luckyDogId) : null;
+
+  // Filter services based on the lucky dog's attributes
+  const myServices = useMemo(() => {
+    if (!luckyDog) return servicesData;
+
+    return servicesData.filter((service) => {
+      const { restrictions } = service;
+
+      // Check age restriction
+      if (restrictions.minAge && (luckyDog.age ?? 0) < restrictions.minAge) {
+        return false;
+      }
+
+      // Check breed restriction
+      if (restrictions.breed && !restrictions.breed.includes(luckyDog.breed)) {
+        return false;
+      }
+
+      // Check size restriction
+      if (restrictions.size && !restrictions.size.includes(luckyDog.size ?? '')) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [luckyDog, servicesData]);
 
   const handleAddToCart = (service: any) => {
     dispatch(
@@ -52,17 +71,24 @@ export function ServicesPage() {
   };
 
   const handleCheckout = async () => {
-    if (!luckyDog) return;
+    if (!luckyDogId || cartItems.length === 0) {
+      return;
+    }
 
-    const serviceIds = cartItems.map((item) => item.serviceId);
-    console.log('Checkout - Cart items:', cartItems);
-    console.log('Checkout - Service IDs:', serviceIds);
-    const result = await dispatch(submitCheckout({ dogId: luckyDog, serviceIds }));
+    try {
+      const result = await createCheckout({
+        dogId: luckyDogId,
+        serviceIds: cartItems.map((item) => item.serviceId),
+      }).unwrap();
 
-    if (submitCheckout.fulfilled.match(result)) {
-      console.log('Checkout result:', result.payload);
-      const checkoutId = result.payload.id;
-      navigate(`/checkout/${checkoutId}`);
+      // Clear cart after successful checkout
+      dispatch(clearCart());
+
+      // Navigate to checkout page
+      navigate(`/checkout/${result.id}`);
+    } catch (error) {
+      console.error('Checkout failed:', error);
+      alert('Checkout failed. Please try again.');
     }
   };
 
@@ -82,9 +108,9 @@ export function ServicesPage() {
             <button
               className="btn checkoutBtn"
               onClick={handleCheckout}
-              disabled={checkoutLoading}
+              disabled={isCheckingOut}
             >
-              {checkoutLoading ? "Processing..." : "Checkout"}
+              {isCheckingOut ? 'Processing...' : 'Checkout'}
             </button>
           )}
         </div>
@@ -99,26 +125,26 @@ export function ServicesPage() {
         <>
           {myDogs.length === 0 ? (
             <p>
-              We are currently showing all {services.length} of our services.
+              We are currently showing all {servicesData.length} of our services.
               <br />
               To see a customized list please <Link to="/dogs">add a dog</Link>.
             </p>
-          ) : luckyDogEntity ? (
+          ) : luckyDog ? (
             myServices.length > 0 ? (
               <>
                 <p>
                   Showing{" "}
                   <b>
-                    {myServices.length}/{services.length}
+                    {myServices.length}/{servicesData.length}
                   </b>{" "}
-                  services available for <b>{luckyDogEntity.name}</b>
+                  services available for <b>{luckyDog.name}</b>
                 </p>
                 <LuckyDog />
               </>
             ) : (
               <>
                 <p>
-                  Unfortunately, <b>{luckyDogEntity.name}</b> doesn&apos;t
+                  Unfortunately, <b>{luckyDog.name}</b> doesn&apos;t
                   qualify for any of our services. Guess they&apos;re not such a
                   lucky dog after all. Please select another dog if you have
                   one.
@@ -129,7 +155,7 @@ export function ServicesPage() {
           ) : (
             <>
               <p>
-                We are currently showing all {services.length} of our services.
+                We are currently showing all {servicesData.length} of our services.
               </p>
               <p>To see a customized list please select a lucky dog below.</p>
               <LuckyDog />

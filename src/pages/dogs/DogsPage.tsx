@@ -1,34 +1,36 @@
-import { useRef, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import type { AppDispatch } from "../../store";
+import { useRef, useMemo } from "react";
+import { useSelector } from "react-redux";
 import type { Dog } from "../../types";
 import { LuckyDog } from "./LuckyDog";
 import { Loader } from "../../components/Loader";
 import {
-  fetchDogs,
-  addDog,
-  removeDog,
-  selectAllDogs,
-  selectLuckyDog,
-  selectDogsLoading
-} from "./dogsSlice";
+  useGetDogsQuery,
+  useAddDogMutation,
+  useRemoveDogMutation,
+} from "../../store/apiSlice";
+import { selectLuckyDogId } from "./uiSlice";
+import { getSize, getAge } from "../../utils/dogUtils";
 
 export function DogsPage() {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const dispatch = useDispatch<AppDispatch>();
 
-  const myDogs = useSelector(selectAllDogs);
-  const luckyDog = useSelector(selectLuckyDog);
-  const isLoading = useSelector(selectDogsLoading);
+  const { data: dogsData = {}, isLoading } = useGetDogsQuery();
+  const [addDog] = useAddDogMutation();
+  const [removeDog] = useRemoveDogMutation();
+  const luckyDogId = useSelector(selectLuckyDogId);
 
-  // Fetch dogs on component mount
-  useEffect(() => {
-    dispatch(fetchDogs());
-  }, [dispatch]);
+  // Transform dogs data with calculated fields
+  const myDogs = useMemo(() => {
+    return Object.values(dogsData).map((dog) => ({
+      ...dog,
+      size: getSize(dog.weight),
+      age: getAge(dog.dob),
+    }));
+  }, [dogsData]);
 
   const handleDeleteDog = (e: React.MouseEvent, dog: Dog) => {
     e.preventDefault();
-    dispatch(removeDog(dog.id));
+    removeDog(dog.id);
   };
 
   const handleNewDog = (e: React.FormEvent<HTMLFormElement>) => {
@@ -37,17 +39,16 @@ export function DogsPage() {
     e.currentTarget.reset();
     const data = Object.fromEntries(formData) as Record<string, string>;
 
-    // Add the dog - the thunk will automatically refetch
-    dispatch(addDog({
+    addDog({
       name: data.name,
       breed: data.breed,
       weight: Number(data.weight),
       dob: data.dob,
-    }));
+    });
 
-    // Close dialog
     dialogRef.current?.close();
   };
+
   return (
     <div className="page">
       <h1>My Dogs</h1>
@@ -70,7 +71,7 @@ export function DogsPage() {
           <div
             key={dog.id}
             className={
-              "card closable" + (luckyDog === dog.id ? " luckyDog" : "")
+              "card closable" + (luckyDogId === dog.id ? " luckyDog" : "")
             }
           >
             <i className="dogImg">🐶</i>
@@ -98,77 +99,48 @@ export function DogsPage() {
             </div>
           </div>
         );
-        })
+      })
       )}
-      <dialog ref={dialogRef} className="dogDialog">
-        <form onSubmit={handleNewDog} className="dogsForm">
-          <div className="grid">
-            <fieldset>
-              <label htmlFor="name">Name:</label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                placeholder="puppo"
-                required
-              />
-            </fieldset>
-            <fieldset>
-              <label htmlFor="dob">Date of Birth:</label>
-              <input id="dob" name="dob" type="date" required />
-            </fieldset>
-            <fieldset>
-              <label htmlFor="weight">Weight (lb):</label>
-              <input
-                id="weight"
-                name="weight"
-                type="number"
-                max="200"
-                min="0"
-                required
-                placeholder="5"
-              />
-            </fieldset>
-            <fieldset>
-              <label htmlFor="breed">Breed:</label>
-              <select id="breed" name="breed" defaultValue="default" required>
-                <option value="default">(Select)</option>
-                <option value="golden-retriever">Golden Retriever</option>
-                <option value="pug">Pug</option>
-                <option value="dalmation">Dalmation</option>
-                <option value="german-shepherd">German Shepherd</option>
-                <option value="lab">Lab</option>
-                <option value="poodle">Poodle</option>
-                <option value="french-bulldog">French Bulldog</option>
-                <option value="cockerspaniel">Cockerspaniel</option>
-                <option value="husky">Husky</option>
-                <option value="hound">Hound</option>
-                <option value="great-dane">Great Dane</option>
-                <option value="scottish-terrir">Scottish Terrier</option>
-                <option value="mixed">Mixed</option>
-                <option value="other">Other</option>
-              </select>
-            </fieldset>
-          </div>
-          <div className="center">
-            <button
-              type="reset"
-              className="secondary"
-              onClick={() => dialogRef.current?.close()}
-            >
-              Close
-            </button>
-            <button type="submit">Add Dog</button>
-          </div>
-        </form>
-      </dialog>
       <button
-        onClick={() => {
-          dialogRef.current?.showModal();
-        }}
+        className="btn"
+        onClick={() => dialogRef.current?.showModal()}
       >
         Add Dog
       </button>
+      <dialog ref={dialogRef}>
+        <form method="dialog" onSubmit={handleNewDog}>
+          <h2>Add a Dog</h2>
+          <label htmlFor="name">Name</label>
+          <input type="text" id="name" name="name" required />
+          <label htmlFor="breed">Breed</label>
+          <select id="breed" name="breed" required>
+            <option value="">Select a breed</option>
+            <option value="golden-retriever">Golden Retriever</option>
+            <option value="husky">Husky</option>
+            <option value="beagle">Beagle</option>
+            <option value="poodle">Poodle</option>
+            <option value="bulldog">Bulldog</option>
+            <option value="hound">Hound</option>
+            <option value="shephard">Shephard</option>
+          </select>
+          <label htmlFor="weight">Weight (lbs)</label>
+          <input type="number" id="weight" name="weight" required />
+          <label htmlFor="dob">Date of Birth</label>
+          <input type="date" id="dob" name="dob" required />
+          <div className="dialogActions">
+            <button
+              type="button"
+              className="btn btnSecondary"
+              onClick={() => dialogRef.current?.close()}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn">
+              Add Dog
+            </button>
+          </div>
+        </form>
+      </dialog>
     </div>
   );
 }

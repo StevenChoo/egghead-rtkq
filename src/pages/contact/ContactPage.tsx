@@ -1,66 +1,83 @@
 import { useState } from "react";
-import * as api from "../../api";
+import { useMakeContactMutation } from "../../store/apiSlice";
 
 export function ContactPage() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [makeContact, { isLoading, isSuccess }] = useMakeContactMutation();
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    message: "",
+  });
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
 
-    setIsLoading(true);
     try {
-      await api.makeContact(Object.fromEntries(formData) as any);
-      setIsSuccess(true);
-      form.reset();
-      // Reset success message after a few seconds
-      setTimeout(() => setIsSuccess(false), 3000);
+      await makeContact(formData).unwrap();
+      // Reset form on success
+      setFormData({ name: "", email: "", message: "" });
     } catch (error) {
       console.error("Failed to send message:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const disabled = isLoading || isSuccess;
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
   return (
     <div className="page">
-      <h1>Contact</h1>
-      <p className={`alert ${isSuccess ? "show" : ""}`}>
-        <b>Message sent</b>
-      </p>
-      <p>
-        Please send us a detailed message if you&apos;d like to get in touch to
-        ask questions about any of our dog grooming services, or anything at
-        all.
-      </p>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="email">Email:</label>
-        <input
-          disabled={disabled}
-          required
-          id="email"
-          type="email"
-          name="email"
-          placeholder="youremail@youremail.com"
-        />
-        <label htmlFor="message">Message:</label>
-        <textarea
-          disabled={disabled}
-          required
-          id="message"
-          name="message"
-          rows={5}
-          placeholder="Please let us know what you want answered and we will try to help"
-        />
-        <div>
-          <button disabled={disabled} type="submit">
-            Contact
+      <h1>Contact Us</h1>
+      {isSuccess ? (
+        <div className="successMessage">
+          <p>Thank you for your message! We&apos;ll get back to you soon.</p>
+          <button
+            className="btn"
+            onClick={() => window.location.reload()}
+          >
+            Send Another Message
           </button>
         </div>
-      </form>
+      ) : (
+        <form onSubmit={handleSubmit}>
+          <label htmlFor="name">Name</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            required
+          />
+
+          <label htmlFor="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+
+          <label htmlFor="message">Message</label>
+          <textarea
+            id="message"
+            name="message"
+            rows={5}
+            value={formData.message}
+            onChange={handleChange}
+            required
+          />
+
+          <button type="submit" className="btn" disabled={isLoading}>
+            {isLoading ? "Sending..." : "Send Message"}
+          </button>
+        </form>
+      )}
     </div>
   );
 }

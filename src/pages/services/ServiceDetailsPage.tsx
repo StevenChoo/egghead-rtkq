@@ -1,65 +1,55 @@
-import { useParams } from "react-router";
-import { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import type { AppDispatch, RootState } from "../../store";
+import { useParams } from "react-router-dom";
 import { Loader } from "../../components/Loader";
-import { fetchServiceById, selectServiceById } from "./servicesSlice";
+import { useGetServiceQuery } from "../../store/apiSlice";
 
 export function ServiceDetailsPage() {
-  const { serviceId } = useParams();
-  const dispatch = useDispatch<AppDispatch>();
+  const { serviceId } = useParams<{ serviceId: string }>();
 
-  const service = useSelector((state: RootState) =>
-    serviceId ? selectServiceById(state, serviceId) : undefined
-  );
-  const isLoading = useSelector((state: RootState) => state.services.loading);
-  const error = useSelector((state: RootState) => state.services.error);
+  const { data: service, isLoading, error } = useGetServiceQuery(serviceId || '');
 
-  useEffect(() => {
-    if (serviceId) {
-      dispatch(fetchServiceById(serviceId));
-    }
-  }, [dispatch, serviceId]);
+  if (isLoading) {
+    return (
+      <div className="page">
+        <Loader />
+      </div>
+    );
+  }
+
+  if (error || !service) {
+    return (
+      <div className="page">
+        <h1>Service Not Found</h1>
+        <p>The service you are looking for does not exist.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
-      {isLoading ? (
-        <Loader />
-      ) : error ? (
-        <>
-          <h1>Could not find service: {serviceId}</h1>
-          <p className="error">{error}</p>
-        </>
-      ) : null}
-      {service ? (
-        <>
-          <h1>{service.title} Service</h1>
-          <div className="card">
-            <img src={service.imageSrc} alt={service.imageAlt} />
-            <div className="cardContents">
-              <h3>${service.price}</h3>
-              <p>{service.description}</p>
-              <div className="restrictions">
-                <h3>Restrictions:</h3>
-                <dl>
-                  {Object.entries(service.restrictions).map(
-                    ([key, details]) => (
-                      <>
-                        <dt>{key}:</dt>
-                        <dd>
-                          {Array.isArray(details)
-                            ? details.join(", ")
-                            : details}
-                        </dd>
-                      </>
-                    )
-                  )}
-                </dl>
-              </div>
-            </div>
-          </div>
-        </>
-      ) : null}
+      <h1>{service.title}</h1>
+      <img
+        src={service.imageSrc}
+        alt={service.imageAlt}
+        style={{ maxWidth: "100%", borderRadius: "8px" }}
+      />
+      <h2>${service.price}</h2>
+      <p>{service.description}</p>
+      {service.restrictions && (
+        <div>
+          <h3>Restrictions</h3>
+          <ul>
+            {service.restrictions.minAge && (
+              <li>Minimum age: {service.restrictions.minAge} years</li>
+            )}
+            {service.restrictions.breed && service.restrictions.breed.length > 0 && (
+              <li>Breeds: {service.restrictions.breed.join(", ")}</li>
+            )}
+            {service.restrictions.size && service.restrictions.size.length > 0 && (
+              <li>Sizes: {service.restrictions.size.join(", ")}</li>
+            )}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
